@@ -274,7 +274,7 @@ function App() {
     }
   }
 
-  // Render platform button
+  // Render platform button with improved layout
   const renderPlatformButton = (platform, index) => {
     const status = getPlatformStatus(platform)
     const statusDisplay = getPlatformStatusDisplay(platform)
@@ -284,14 +284,14 @@ function App() {
         key={platform.id}
         onClick={() => handlePlatformAccess(platform)}
         onTouchStart={() => handlePlatformAccess(platform)}
-        className={`w-full p-6 rounded-xl bg-gradient-to-br ${platform.color} text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 relative overflow-hidden`}
+        className={`w-full p-4 rounded-xl bg-gradient-to-br ${platform.color} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 relative overflow-hidden`}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col items-center space-y-2">
+          <div className="flex items-center space-x-2">
             <span className="text-2xl">{platform.icon}</span>
-            <span>{platform.name}</span>
+            <span className="text-lg">{platform.name}</span>
           </div>
-          <div className="text-sm opacity-90">
+          <div className="text-xs opacity-90 bg-black bg-opacity-20 px-2 py-1 rounded-full">
             {statusDisplay}
           </div>
         </div>

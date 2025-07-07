@@ -195,7 +195,7 @@ function App() {
 
   // Save parent email
   const saveParentEmail = (email) => {
-    if (email && email.includes('@')) {
+    if (email && email.includes('@') && email.includes('.')) {
       localStorage.setItem('safeguardian_parent_email', email)
       setParentEmail(email)
       setIsParentEmailSet(true)
@@ -215,7 +215,7 @@ function App() {
         parent_email: email,
         child_device_id: 'demo_device', // In real app, this would be unique device ID
         setup_timestamp: new Date().toISOString(),
-        app_version: '1.0.0'
+        app_version: '1.1.0'
       }
 
       console.log('Syncing parent email to Supabase:', emailData)
@@ -316,18 +316,28 @@ function App() {
 
   // Parent email setup component
   const ParentEmailSetup = () => {
-    const [emailInput, setEmailInput] = useState('')
+    const [emailInput, setEmailInput] = useState(parentEmail || '')
     const [isValid, setIsValid] = useState(false)
+    const [showSuccess, setShowSuccess] = useState(false)
+
+    useEffect(() => {
+      setIsValid(emailInput.includes('@') && emailInput.includes('.') && emailInput.length > 5)
+    }, [emailInput])
 
     const handleEmailChange = (e) => {
       const email = e.target.value
       setEmailInput(email)
-      setIsValid(email.includes('@') && email.includes('.'))
     }
 
-    const handleSave = () => {
+    const handleSave = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      
       if (saveParentEmail(emailInput)) {
-        setCurrentSettingsView('main')
+        setShowSuccess(true)
+        setTimeout(() => {
+          setCurrentSettingsView('main')
+        }, 1500)
       }
     }
 
@@ -349,7 +359,7 @@ function App() {
           >
             ←
           </button>
-          <h2 className="text-lg font-semibold">Parent Email Setup</h2>
+          <h2 className="text-lg font-semibold text-white">Parent Email Setup</h2>
         </div>
         
         <div className="space-y-4">
@@ -369,23 +379,36 @@ function App() {
             
             <button
               onClick={handleSave}
+              onTouchStart={handleSave}
               disabled={!isValid}
-              className={`w-full mt-3 py-2 px-4 rounded-lg font-medium transition-all ${
+              className={`w-full mt-3 py-2 px-4 rounded-lg font-medium transition-all touch-manipulation ${
                 isValid 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' 
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
               }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              Save Parent Email
+              {showSuccess ? '✅ Saved!' : 'Save Parent Email'}
             </button>
           </div>
           
-          {isParentEmailSet && (
+          {isParentEmailSet && !showSuccess && (
             <div className="p-4 bg-green-900/30 rounded-xl border border-green-700">
               <h3 className="text-green-400 font-medium mb-2">✅ Parent Email Connected</h3>
               <p className="text-xs text-gray-300">
                 Current: {parentEmail}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                You can update the email address above if needed.
+              </p>
+            </div>
+          )}
+          
+          {showSuccess && (
+            <div className="p-4 bg-green-900/30 rounded-xl border border-green-700 animate-pulse">
+              <h3 className="text-green-400 font-medium mb-2">🎉 Success!</h3>
+              <p className="text-xs text-gray-300">
+                Parent email has been saved and synced successfully.
               </p>
             </div>
           )}
@@ -397,7 +420,7 @@ function App() {
   // Session monitoring component
   const SessionMonitoring = () => {
     const activeSessions = Object.keys(platformSessions).length
-    
+
     return (
       <div className="px-6">
         <div className="flex items-center gap-3 mb-6">
@@ -416,34 +439,37 @@ function App() {
           >
             ←
           </button>
-          <h2 className="text-lg font-semibold">Session Monitoring</h2>
+          <h2 className="text-lg font-semibold text-white">Session Monitoring</h2>
         </div>
         
         <div className="space-y-4">
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+          <div className="p-4 bg-blue-900/30 rounded-xl border border-blue-700">
             <h3 className="text-white font-medium mb-2">📊 Active Sessions</h3>
             <p className="text-2xl font-bold text-blue-400">{activeSessions}</p>
-            <p className="text-xs text-gray-400">Currently monitored platforms</p>
+            <p className="text-xs text-gray-300">Currently monitored platforms</p>
           </div>
           
-          {Object.entries(platformSessions).map(([platformId, session]) => (
-            <div key={platformId} className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white font-medium">{session.platform}</span>
-                <span className="text-xs text-green-400">● Active</span>
-              </div>
-              <div className="text-xs text-gray-400 space-y-1">
-                <div>Started: {new Date(session.startTime).toLocaleTimeString()}</div>
-                <div>Last Activity: {new Date(session.lastActivity).toLocaleTimeString()}</div>
-                <div>Status: {session.monitored ? '🛡️ Monitored' : '⚠️ Unmonitored'}</div>
-              </div>
+          <div className="p-4 bg-purple-900/30 rounded-xl border border-purple-700">
+            <h3 className="text-white font-medium mb-2">🔍 Monitoring Status</h3>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${isMonitoring ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="text-sm text-gray-300">
+                {isMonitoring ? 'Active Protection' : 'Monitoring Disabled'}
+              </span>
             </div>
-          ))}
+          </div>
           
-          {activeSessions === 0 && (
-            <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700 text-center">
-              <p className="text-gray-400">No active sessions detected</p>
-              <p className="text-xs text-gray-500 mt-1">Open a social media platform to start monitoring</p>
+          {Object.keys(platformSessions).length > 0 && (
+            <div className="p-4 bg-gray-900/30 rounded-xl border border-gray-700">
+              <h3 className="text-white font-medium mb-3">📱 Recent Sessions</h3>
+              <div className="space-y-2">
+                {Object.entries(platformSessions).map(([platformId, session]) => (
+                  <div key={platformId} className="flex justify-between items-center p-2 bg-gray-800 rounded">
+                    <span className="text-sm text-white">{session.platform}</span>
+                    <span className="text-xs text-green-400">{session.status}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -451,16 +477,654 @@ function App() {
     )
   }
 
-  // Render platform selection screen
-  const renderPlatformSelection = () => {
+  // Settings screen component
+  const SettingsScreen = () => {
+    if (currentSettingsView === 'parent_email') {
+      return <ParentEmailSetup />
+    }
+    
+    if (currentSettingsView === 'session_monitoring') {
+      return <SessionMonitoring />
+    }
+    
+    if (currentSettingsView === 'notifications') {
+      return (
+        <div className="px-6">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                navigateToSettingsView('main')
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                navigateToSettingsView('main')
+              }}
+              className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              ←
+            </button>
+            <h2 className="text-lg font-semibold text-white">Notification Preferences</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-orange-900/30 rounded-xl border border-orange-700">
+              <h3 className="text-white font-medium mb-3">🔔 Alert Settings</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">Threat Alerts</span>
+                  <div className="w-12 h-6 bg-green-600 rounded-full relative">
+                    <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">Daily Reports</span>
+                  <div className="w-12 h-6 bg-green-600 rounded-full relative">
+                    <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">App Updates</span>
+                  <div className="w-12 h-6 bg-gray-600 rounded-full relative">
+                    <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 left-0.5"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (currentSettingsView === 'sensitivity') {
+      return (
+        <div className="px-6">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                navigateToSettingsView('main')
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                navigateToSettingsView('main')
+              }}
+              className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              ←
+            </button>
+            <h2 className="text-lg font-semibold text-white">Monitoring Sensitivity</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-purple-900/30 rounded-xl border border-purple-700">
+              <h3 className="text-white font-medium mb-3">⚡ Detection Level</h3>
+              <div className="space-y-3">
+                <div className="p-3 bg-green-800 rounded-lg border-2 border-green-600">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-400 rounded-full"></div>
+                    <span className="text-white font-medium">Standard</span>
+                  </div>
+                  <p className="text-xs text-gray-300 mt-1">Balanced protection and privacy</p>
+                </div>
+                <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                    <span className="text-white">High</span>
+                  </div>
+                  <p className="text-xs text-gray-300 mt-1">Maximum protection, more alerts</p>
+                </div>
+                <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                    <span className="text-white">Low</span>
+                  </div>
+                  <p className="text-xs text-gray-300 mt-1">Basic protection, fewer alerts</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (currentSettingsView === 'dashboard') {
+      return (
+        <div className="px-6">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                navigateToSettingsView('main')
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                navigateToSettingsView('main')
+              }}
+              className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              ←
+            </button>
+            <h2 className="text-lg font-semibold text-white">Parent Dashboard Access</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-teal-900/30 rounded-xl border border-teal-700">
+              <h3 className="text-white font-medium mb-2">🔗 Connection Status</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-3 h-3 rounded-full ${isParentEmailSet ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-sm text-gray-300">
+                  {isParentEmailSet ? 'Connected' : 'Not Connected'}
+                </span>
+              </div>
+              {isParentEmailSet && (
+                <p className="text-xs text-gray-300">
+                  Parent dashboard available at: dashboard.safeguardian.app
+                </p>
+              )}
+            </div>
+            
+            <div className="p-4 bg-blue-900/30 rounded-xl border border-blue-700">
+              <h3 className="text-white font-medium mb-2">📊 Available Features</h3>
+              <ul className="text-xs text-gray-300 space-y-1">
+                <li>• Real-time activity monitoring</li>
+                <li>• Daily usage reports</li>
+                <li>• Threat detection alerts</li>
+                <li>• Platform access logs</li>
+                <li>• Safety recommendations</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (currentSettingsView === 'privacy') {
+      return (
+        <div className="px-6">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                navigateToSettingsView('main')
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                navigateToSettingsView('main')
+              }}
+              className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              ←
+            </button>
+            <h2 className="text-lg font-semibold text-white">Privacy Settings</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-pink-900/30 rounded-xl border border-pink-700">
+              <h3 className="text-white font-medium mb-3">🔒 Data Protection</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">Data Encryption</span>
+                  <span className="text-xs text-green-400">✅ Enabled</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">Analytics Collection</span>
+                  <span className="text-xs text-blue-400">📊 Minimal</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">Data Retention</span>
+                  <span className="text-xs text-gray-400">⏰ 30 days</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (currentSettingsView === 'about') {
+      return (
+        <div className="px-6">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                navigateToSettingsView('main')
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                navigateToSettingsView('main')
+              }}
+              className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              ←
+            </button>
+            <h2 className="text-lg font-semibold text-white">About SafeGuardian</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-gray-900/30 rounded-xl border border-gray-700">
+              <h3 className="text-white font-medium mb-2">🛡️ SafeGuardian</h3>
+              <p className="text-xs text-gray-300 mb-2">Version 1.1.0</p>
+              <p className="text-xs text-gray-300 mb-3">
+                Advanced child protection app with AI-powered monitoring and real-time threat detection.
+              </p>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm text-white font-medium">Key Features:</h4>
+                <ul className="text-xs text-gray-300 space-y-1">
+                  <li>• Real-time session monitoring</li>
+                  <li>• AI-powered threat detection</li>
+                  <li>• Automatic parent notifications</li>
+                  <li>• Secure evidence collection</li>
+                  <li>• Cross-platform protection</li>
+                </ul>
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-gray-600">
+                <p className="text-xs text-gray-400">
+                  Support: support@safeguardian.app
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Main settings screen
     return (
       <div className="px-6">
-        <h2 className="text-lg font-semibold mb-4">Choose Your Platform</h2>
-        <p className="text-sm text-gray-400 mb-6">
-          Access your social media safely. SafeGuardian is monitoring for your protection.
-        </p>
+        <h2 className="text-lg font-semibold mb-2 text-white">Settings</h2>
+        <p className="text-sm text-gray-300 mb-6">Configure your SafeGuardian protection settings.</p>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigateToSettingsView('parent_email')
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              navigateToSettingsView('parent_email')
+            }}
+            className="w-full p-4 bg-green-900/30 border border-green-700 rounded-xl text-left hover:bg-green-900/50 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">Parent Email Setup</span>
+              <span className="text-green-400">›</span>
+            </div>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigateToSettingsView('session_monitoring')
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              navigateToSettingsView('session_monitoring')
+            }}
+            className="w-full p-4 bg-blue-900/30 border border-blue-700 rounded-xl text-left hover:bg-blue-900/50 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">Session Monitoring</span>
+              <span className="text-blue-400">›</span>
+            </div>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigateToSettingsView('notifications')
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              navigateToSettingsView('notifications')
+            }}
+            className="w-full p-4 bg-orange-900/30 border border-orange-700 rounded-xl text-left hover:bg-orange-900/50 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">Notification Preferences</span>
+              <span className="text-orange-400">›</span>
+            </div>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigateToSettingsView('sensitivity')
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              navigateToSettingsView('sensitivity')
+            }}
+            className="w-full p-4 bg-purple-900/30 border border-purple-700 rounded-xl text-left hover:bg-purple-900/50 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">Monitoring Sensitivity</span>
+              <span className="text-purple-400">›</span>
+            </div>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigateToSettingsView('dashboard')
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              navigateToSettingsView('dashboard')
+            }}
+            className="w-full p-4 bg-teal-900/30 border border-teal-700 rounded-xl text-left hover:bg-teal-900/50 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">Parent Dashboard Access</span>
+              <span className="text-teal-400">›</span>
+            </div>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigateToSettingsView('privacy')
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              navigateToSettingsView('privacy')
+            }}
+            className="w-full p-4 bg-pink-900/30 border border-pink-700 rounded-xl text-left hover:bg-pink-900/50 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">Privacy Settings</span>
+              <span className="text-pink-400">›</span>
+            </div>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              navigateToSettingsView('about')
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              navigateToSettingsView('about')
+            }}
+            className="w-full p-4 bg-gray-900/30 border border-gray-700 rounded-xl text-left hover:bg-gray-900/50 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">About SafeGuardian</span>
+              <span className="text-gray-400">›</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Platform access screen
+  const PlatformAccessScreen = () => {
+    if (!selectedPlatform) return null
+
+    const currentSession = platformSessions[selectedPlatform.id]
+    const sessionStartTime = currentSession?.startTime ? new Date(currentSession.startTime).toLocaleTimeString() : new Date().toLocaleTimeString()
+
+    return (
+      <div className="px-6">
+        <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${selectedPlatform.color} flex items-center justify-center`}>
+          <span className="text-2xl">{selectedPlatform.icon}</span>
+        </div>
+        
+        <h2 className="text-xl font-bold text-center mb-2 text-white">Accessing {selectedPlatform.name}</h2>
+        <p className="text-sm text-gray-300 text-center mb-6">SafeGuardian is now monitoring your session for safety</p>
+        
+        <div className="space-y-4 mb-6">
+          <div className="p-4 bg-blue-900/30 rounded-xl border border-blue-700">
+            <h3 className="text-white font-medium mb-2 flex items-center gap-2">
+              📊 Session Details
+            </h3>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Started:</span>
+                <span className="text-white">{sessionStartTime}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Status:</span>
+                <span className="text-green-400 flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  Active
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Monitoring:</span>
+                <span className="text-blue-400 flex items-center gap-1">
+                  🛡️ Protected
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-4 bg-green-900/30 rounded-xl border border-green-700">
+            <h3 className="text-green-400 font-medium mb-2 flex items-center gap-2">
+              🔒 Secure Connection
+            </h3>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-300">Protection Status</span>
+              <span className="text-green-400 text-sm font-medium">Active</span>
+            </div>
+          </div>
+          
+          <div className="p-4 bg-purple-900/30 rounded-xl border border-purple-700">
+            <h3 className="text-purple-400 font-medium mb-2 flex items-center gap-2">
+              🤖 AI Monitoring
+            </h3>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-300">Threat Detection</span>
+              <span className="text-purple-400 text-sm font-medium">Scanning</span>
+            </div>
+          </div>
+          
+          <div className="p-4 bg-orange-900/30 rounded-xl border border-orange-700">
+            <h3 className="text-orange-400 font-medium mb-2 flex items-center gap-2">
+              📧 Parent Dashboard
+            </h3>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-300">Connection</span>
+              <span className={`text-sm font-medium ${isParentEmailSet ? 'text-green-400' : 'text-orange-400'}`}>
+                {isParentEmailSet ? 'Connected' : 'Setup Required'}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              openPlatform(selectedPlatform.url)
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              openPlatform(selectedPlatform.url)
+            }}
+            className={`w-full py-3 px-4 rounded-xl font-medium transition-all cursor-pointer touch-manipulation bg-gradient-to-r ${selectedPlatform.color} text-white hover:opacity-90`}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            Open {selectedPlatform.name} Safely
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setSelectedPlatform(null)
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              setSelectedPlatform(null)
+            }}
+            className="w-full py-2 px-4 rounded-xl font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 transition-all cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            Choose Different Platform
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Activity screen
+  const ActivityScreen = () => {
+    const accessLog = JSON.parse(localStorage.getItem('safeguardian_access_log') || '[]')
+    const recentAccess = accessLog.slice(-10).reverse()
+
+    return (
+      <div className="px-6">
+        <h2 className="text-lg font-semibold mb-2 text-white">Activity Monitor</h2>
+        <p className="text-sm text-gray-300 mb-6">Track your social media usage and safety metrics.</p>
+        
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-900/30 rounded-xl border border-blue-700">
+            <h3 className="text-white font-medium mb-2">📊 Today's Summary</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-2xl font-bold text-blue-400">{Object.keys(platformSessions).length}</p>
+                <p className="text-xs text-gray-300">Active Sessions</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-400">{recentAccess.length}</p>
+                <p className="text-xs text-gray-300">Platform Accesses</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-4 bg-green-900/30 rounded-xl border border-green-700">
+            <h3 className="text-white font-medium mb-2">🛡️ Safety Status</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-gray-300">All platforms safe • No threats detected</span>
+            </div>
+          </div>
+          
+          {recentAccess.length > 0 && (
+            <div className="p-4 bg-gray-900/30 rounded-xl border border-gray-700">
+              <h3 className="text-white font-medium mb-3">📱 Recent Activity</h3>
+              <div className="space-y-2">
+                {recentAccess.map((access, index) => (
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-800 rounded">
+                    <div>
+                      <span className="text-sm text-white">{access.platform}</span>
+                      <p className="text-xs text-gray-400">
+                        {new Date(access.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <span className="text-xs text-green-400">✅ Safe</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Protected screen
+  const ProtectedScreen = () => {
+    return (
+      <div className="px-6">
+        <h2 className="text-lg font-semibold mb-2 text-white">Protected Mode</h2>
+        <p className="text-sm text-gray-300 mb-6">Advanced protection features and safety controls.</p>
+        
+        <div className="space-y-4">
+          <div className="p-4 bg-green-900/30 rounded-xl border border-green-700">
+            <h3 className="text-white font-medium mb-2">🛡️ Protection Status</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-green-400 font-medium">Fully Protected</span>
+            </div>
+            <p className="text-xs text-gray-300">
+              All social media platforms are being monitored with AI-powered threat detection.
+            </p>
+          </div>
+          
+          <div className="p-4 bg-blue-900/30 rounded-xl border border-blue-700">
+            <h3 className="text-white font-medium mb-2">🔍 Active Monitoring</h3>
+            <ul className="text-xs text-gray-300 space-y-1">
+              <li>• Real-time content scanning</li>
+              <li>• Inappropriate contact detection</li>
+              <li>• Cyberbullying prevention</li>
+              <li>• Privacy protection alerts</li>
+            </ul>
+          </div>
+          
+          <div className="p-4 bg-purple-900/30 rounded-xl border border-purple-700">
+            <h3 className="text-white font-medium mb-2">📊 Safety Metrics</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xl font-bold text-purple-400">0</p>
+                <p className="text-xs text-gray-300">Threats Blocked</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-green-400">100%</p>
+                <p className="text-xs text-gray-300">Safety Score</p>
+              </div>
+            </div>
+          </div>
+          
+          {isParentEmailSet && (
+            <div className="p-4 bg-orange-900/30 rounded-xl border border-orange-700">
+              <h3 className="text-white font-medium mb-2">📧 Parent Notifications</h3>
+              <p className="text-xs text-gray-300 mb-2">
+                Connected to: {parentEmail}
+              </p>
+              <p className="text-xs text-gray-400">
+                Parents receive real-time alerts and daily safety reports.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Main home screen
+  const HomeScreen = () => {
+    if (selectedPlatform) {
+      return <PlatformAccessScreen />
+    }
+
+    return (
+      <div className="px-6">
+        <h2 className="text-xl font-bold mb-2 text-white">Choose Your Platform</h2>
+        <p className="text-sm text-gray-300 mb-6">Access your social media safely. SafeGuardian is monitoring for your protection.</p>
+        
+        <div className="grid grid-cols-2 gap-4 mb-6">
           {platforms.map((platform) => {
             const hasActiveSession = platformSessions[platform.id]
             
@@ -476,844 +1140,108 @@ function App() {
                   e.preventDefault()
                   accessPlatform(platform)
                 }}
-                className={`bg-gradient-to-br ${platform.color} p-4 rounded-2xl shadow-lg transform transition-all hover:scale-105 active:scale-95 cursor-pointer touch-manipulation relative`}
+                className={`relative p-4 rounded-2xl bg-gradient-to-br ${platform.color} text-white hover:scale-105 transition-all cursor-pointer touch-manipulation`}
                 style={{ WebkitTapHighlightColor: 'transparent' }}
               >
-                <div className="text-3xl mb-2">{platform.icon}</div>
-                <div className="text-white font-semibold text-sm">{platform.name}</div>
-                <div className="text-xs text-white/80 mt-1">
-                  {platform.status === 'safe' ? '✅ Safe' : '⚠️ Caution'}
-                </div>
                 {hasActiveSession && (
-                  <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-gray-900 animate-pulse"></div>
                 )}
+                <div className="text-2xl mb-2">{platform.icon}</div>
+                <div className="text-sm font-medium">{platform.name}</div>
+                <div className="text-xs opacity-80 flex items-center gap-1 mt-1">
+                  ✅ Safe
+                </div>
               </button>
             )
           })}
         </div>
-
-        {/* Safety Features */}
-        <div className="mt-8 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-          <h3 className="text-sm font-semibold text-yellow-400 mb-2">🛡️ Active Protection Features</h3>
-          <div className="space-y-1 text-xs text-gray-300">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span>Real-time session monitoring</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span>AI-powered threat detection</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span>Automatic parent notifications</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span>Secure evidence collection</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Render platform access screen with enhanced session info
-  const renderPlatformAccess = () => {
-    if (!selectedPlatform) return null;
-    
-    const sessionInfo = platformSessions[selectedPlatform.id]
-    
-    return (
-      <div className="px-6">
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <div className="text-center mb-6">
-            <div className="text-4xl mb-3">{selectedPlatform.icon}</div>
-            <h2 className="text-xl font-bold mb-2">Accessing {selectedPlatform.name}</h2>
-            <p className="text-sm text-gray-400">
-              SafeGuardian is now monitoring your session for safety
-            </p>
-          </div>
-
-          {/* Session Information */}
-          {sessionInfo && (
-            <div className="mb-6 p-3 bg-blue-900/30 rounded-lg border border-blue-700">
-              <h3 className="text-sm font-semibold text-blue-400 mb-2">📊 Session Details</h3>
-              <div className="text-xs text-gray-300 space-y-1">
-                <div>Started: {new Date(sessionInfo.startTime).toLocaleString()}</div>
-                <div>Status: {sessionInfo.status === 'active' ? '🟢 Active' : '🔴 Inactive'}</div>
-                <div>Monitoring: {sessionInfo.monitored ? '🛡️ Protected' : '⚠️ Unprotected'}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Monitoring Status */}
-          <div className="space-y-3 mb-6">
-            <div className="flex items-center justify-between p-3 bg-green-900/30 rounded-lg border border-green-700">
-              <span className="text-sm">🔒 Secure Connection</span>
-              <span className="text-xs text-green-400">Active</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-blue-900/30 rounded-lg border border-blue-700">
-              <span className="text-sm">🤖 AI Monitoring</span>
-              <span className="text-xs text-blue-400">Scanning</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-purple-900/30 rounded-lg border border-purple-700">
-              <span className="text-sm">👨‍👩‍👧‍👦 Parent Dashboard</span>
-              <span className="text-xs text-purple-400">{isParentEmailSet ? 'Connected' : 'Setup Required'}</span>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                openPlatform(selectedPlatform.url)
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault()
-                openPlatform(selectedPlatform.url)
-              }}
-              className={`w-full bg-gradient-to-r ${selectedPlatform.color} text-white py-3 px-4 rounded-xl font-semibold transition-all hover:opacity-90 cursor-pointer touch-manipulation`}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-            >
-              Open {selectedPlatform.name} Safely
-            </button>
-            
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setSelectedPlatform(null)
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault()
-                setSelectedPlatform(null)
-              }}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-xl font-semibold transition-all cursor-pointer touch-manipulation"
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-            >
-              Choose Different Platform
-            </button>
-          </div>
-
-          {/* Safety Reminder */}
-          <div className="mt-6 p-4 bg-yellow-900/20 rounded-lg border border-yellow-700">
-            <div className="flex items-start gap-3">
-              <span className="text-yellow-400 text-lg">⚠️</span>
-              <div>
-                <h4 className="text-sm font-semibold text-yellow-400 mb-1">Safety Reminder</h4>
-                <p className="text-xs text-gray-300">
-                  Never share personal information with strangers. If someone makes you uncomfortable, 
-                  close the app immediately. SafeGuardian is watching to keep you safe.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Render activity screen with session data
-  const renderActivityScreen = () => {
-    const accessLog = JSON.parse(localStorage.getItem('safeguardian_access_log') || '[]')
-    
-    return (
-      <div className="px-6">
-        <h2 className="text-lg font-semibold mb-4">Activity Monitor</h2>
-        <p className="text-sm text-gray-400 mb-6">
-          View your recent activity and monitoring status.
-        </p>
         
-        {/* Session Summary */}
-        <div className="mb-6 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-          <h3 className="text-sm font-semibold text-blue-400 mb-2">📊 Session Summary</h3>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <div className="text-xl font-bold text-green-400">{Object.keys(platformSessions).length}</div>
-              <div className="text-xs text-gray-400">Active Sessions</div>
-            </div>
-            <div>
-              <div className="text-xl font-bold text-blue-400">{accessLog.length}</div>
-              <div className="text-xs text-gray-400">Total Accesses</div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Recent Activity */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-gray-300">Recent Activity</h3>
-          
-          {accessLog.slice(-10).reverse().map((access, index) => (
-            <div key={index} className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white font-medium">{access.platform}</span>
-                <span className="text-xs text-gray-400">
-                  {new Date(access.timestamp).toLocaleTimeString()}
-                </span>
-              </div>
-              <div className="text-xs text-gray-400">
-                {access.monitoring_active ? '🛡️ Monitored' : '⚠️ Unmonitored'} • 
-                {access.parent_email ? ' Parent Notified' : ' No Parent Setup'}
-              </div>
-            </div>
-          ))}
-          
-          {accessLog.length === 0 && (
-            <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700 text-center">
-              <p className="text-gray-400">No activity recorded yet</p>
-              <p className="text-xs text-gray-500 mt-1">Start using social media platforms to see activity</p>
-            </div>
-          )}
+        <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700">
+          <h3 className="text-yellow-400 font-medium mb-2 flex items-center gap-2">
+            🛡️ Active Protection Features
+          </h3>
+          <ul className="text-xs text-gray-300 space-y-1">
+            <li>• Real-time session monitoring</li>
+            <li>• AI-powered threat detection</li>
+            <li>• Automatic parent notifications</li>
+            <li>• Secure evidence collection</li>
+          </ul>
         </div>
       </div>
     )
   }
 
-  // Enhanced settings screens (keeping existing ones and adding new ones)
-  const renderNotificationPreferences = () => {
-    return (
-      <div className="px-6">
-        <div className="flex items-center gap-3 mb-6">
+  // Navigation component
+  const Navigation = () => (
+    <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 px-4 py-2">
+      <div className="flex justify-around">
+        {[
+          { id: 'home', icon: '🏠', label: 'Home' },
+          { id: 'activity', icon: '📊', label: 'Activity' },
+          { id: 'protected', icon: '🛡️', label: 'Protected' },
+          { id: 'settings', icon: '⚙️', label: 'Settings' }
+        ].map((tab) => (
           <button
+            key={tab.id}
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              navigateToSettingsView('main')
+              navigateToTab(tab.id)
             }}
             onTouchStart={(e) => {
               e.preventDefault()
-              navigateToSettingsView('main')
+              navigateToTab(tab.id)
             }}
-            className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
+            className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all cursor-pointer touch-manipulation ${
+              activeTab === tab.id 
+                ? 'bg-blue-600 text-white' 
+                : 'text-gray-400 hover:text-white'
+            }`}
             style={{ WebkitTapHighlightColor: 'transparent' }}
           >
-            ←
+            <span className="text-lg mb-1">{tab.icon}</span>
+            <span className="text-xs">{tab.label}</span>
           </button>
-          <h2 className="text-lg font-semibold">Notification Preferences</h2>
-        </div>
-        
-        <div className="space-y-4">
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">Threat Alerts</span>
-              <div className="w-12 h-6 bg-green-500 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">Get notified when potential threats are detected</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">Session Alerts</span>
-              <div className="w-12 h-6 bg-green-500 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">Notify parent when new sessions start</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">Daily Reports</span>
-              <div className="w-12 h-6 bg-green-500 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">Receive daily activity summaries</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">App Updates</span>
-              <div className="w-12 h-6 bg-gray-600 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5"></div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">Get notified about app updates and new features</p>
-          </div>
-        </div>
+        ))}
       </div>
-    )
-  }
+    </div>
+  )
 
-  // Keep other existing settings screens (monitoring sensitivity, parent dashboard, privacy, about)
-  const renderMonitoringSensitivity = () => {
-    return (
-      <div className="px-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('main')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('main')
-            }}
-            className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            ←
-          </button>
-          <h2 className="text-lg font-semibold">Monitoring Sensitivity</h2>
-        </div>
-        
-        <div className="space-y-4">
-          <div className="p-4 bg-blue-900/30 rounded-xl border border-blue-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">🔵 Standard</span>
-              <span className="text-blue-400 text-sm">Current</span>
-            </div>
-            <p className="text-xs text-gray-400">Balanced protection with minimal false positives</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">🟡 High</span>
-              <span className="text-gray-400 text-sm">Available</span>
-            </div>
-            <p className="text-xs text-gray-400">Enhanced monitoring with stricter detection</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">🟢 Low</span>
-              <span className="text-gray-400 text-sm">Available</span>
-            </div>
-            <p className="text-xs text-gray-400">Basic monitoring for older children</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderParentDashboardAccess = () => {
-    return (
-      <div className="px-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('main')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('main')
-            }}
-            className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            ←
-          </button>
-          <h2 className="text-lg font-semibold">Parent Dashboard</h2>
-        </div>
-        
-        <div className="space-y-4">
-          <div className={`p-4 rounded-xl border ${isParentEmailSet ? 'bg-green-900/30 border-green-700' : 'bg-yellow-900/30 border-yellow-700'}`}>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">👨‍👩‍👧‍👦</span>
-              <div>
-                <h3 className="text-white font-medium">{isParentEmailSet ? 'Connected' : 'Setup Required'}</h3>
-                <p className={`text-xs ${isParentEmailSet ? 'text-green-400' : 'text-yellow-400'}`}>
-                  {isParentEmailSet ? `Parent email: ${parentEmail}` : 'Parent email not configured'}
-                </p>
-              </div>
-            </div>
-            {isParentEmailSet ? (
-              <p className="text-xs text-gray-300">Your parents can view activity reports and receive alerts through their dashboard.</p>
-            ) : (
-              <button
-                onClick={() => navigateToSettingsView('parent_email')}
-                className="w-full mt-2 bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all cursor-pointer touch-manipulation"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-              >
-                Setup Parent Email
-              </button>
-            )}
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <h3 className="text-white font-medium mb-2">Dashboard Features</h3>
-            <div className="space-y-2 text-xs text-gray-300">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span>Real-time session monitoring</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span>Threat detection alerts</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span>Weekly safety reports</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span>Emergency contact system</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderPrivacySettings = () => {
-    return (
-      <div className="px-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('main')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('main')
-            }}
-            className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            ←
-          </button>
-          <h2 className="text-lg font-semibold">Privacy Settings</h2>
-        </div>
-        
-        <div className="space-y-4">
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">Data Encryption</span>
-              <span className="text-green-400 text-sm">Enabled</span>
-            </div>
-            <p className="text-xs text-gray-400">All data is encrypted with AES-256 encryption</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">Session Data Sync</span>
-              <span className="text-blue-400 text-sm">Enabled</span>
-            </div>
-            <p className="text-xs text-gray-400">Session data is synced with Supabase for parent dashboard</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">Anonymous Analytics</span>
-              <div className="w-12 h-6 bg-gray-600 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5"></div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">Help improve SafeGuardian with anonymous usage data</p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium">Data Retention</span>
-              <span className="text-blue-400 text-sm">30 days</span>
-            </div>
-            <p className="text-xs text-gray-400">Activity data is automatically deleted after 30 days</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderAboutSafeGuardian = () => {
-    return (
-      <div className="px-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('main')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('main')
-            }}
-            className="text-yellow-400 text-xl cursor-pointer touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            ←
-          </button>
-          <h2 className="text-lg font-semibold">About SafeGuardian</h2>
-        </div>
-        
-        <div className="space-y-4">
-          <div className="text-center p-6 bg-gray-800/50 rounded-xl border border-gray-700">
-            <div className="text-4xl mb-3">🛡️</div>
-            <h3 className="text-xl font-bold text-white mb-2">SafeGuardian</h3>
-            <p className="text-sm text-gray-400 mb-4">Version 1.1.0</p>
-            <p className="text-xs text-gray-300">
-              Protecting children in the digital world with AI-powered monitoring, real-time session detection, and parent connectivity.
-            </p>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <h3 className="text-white font-medium mb-3">Key Features</h3>
-            <div className="space-y-2 text-xs text-gray-300">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                <span>AI-powered threat detection</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                <span>Real-time session monitoring</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                <span>Parent email integration</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                <span>Supabase data synchronization</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                <span>Multi-platform support</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-            <h3 className="text-white font-medium mb-2">Support</h3>
-            <p className="text-xs text-gray-300 mb-3">
-              Need help? Contact our support team for assistance.
-            </p>
-            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all cursor-pointer touch-manipulation"
-                    style={{ WebkitTapHighlightColor: 'transparent' }}>
-              Contact Support
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Main settings screen with new options
-  const renderMainSettingsScreen = () => {
-    return (
-      <div className="px-6">
-        <h2 className="text-lg font-semibold mb-4">Settings</h2>
-        <p className="text-sm text-gray-400 mb-6">
-          Configure your SafeGuardian protection settings.
-        </p>
-        
-        <div className="space-y-2">
-          <button 
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('parent_email')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('parent_email')
-            }}
-            className="w-full flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700 cursor-pointer touch-manipulation hover:bg-gray-700/50 transition-all"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-white">Parent Email Setup</span>
-              {isParentEmailSet && <span className="text-xs text-green-400">✓</span>}
-            </div>
-            <span className="text-gray-400">›</span>
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('session_monitoring')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('session_monitoring')
-            }}
-            className="w-full flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700 cursor-pointer touch-manipulation hover:bg-gray-700/50 transition-all"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-white">Session Monitoring</span>
-            <span className="text-gray-400">›</span>
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('notifications')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('notifications')
-            }}
-            className="w-full flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700 cursor-pointer touch-manipulation hover:bg-gray-700/50 transition-all"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-white">Notification Preferences</span>
-            <span className="text-gray-400">›</span>
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('monitoring')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('monitoring')
-            }}
-            className="w-full flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700 cursor-pointer touch-manipulation hover:bg-gray-700/50 transition-all"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-white">Monitoring Sensitivity</span>
-            <span className="text-gray-400">›</span>
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('dashboard')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('dashboard')
-            }}
-            className="w-full flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700 cursor-pointer touch-manipulation hover:bg-gray-700/50 transition-all"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-white">Parent Dashboard Access</span>
-            <span className="text-gray-400">›</span>
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('privacy')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('privacy')
-            }}
-            className="w-full flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700 cursor-pointer touch-manipulation hover:bg-gray-700/50 transition-all"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-white">Privacy Settings</span>
-            <span className="text-gray-400">›</span>
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToSettingsView('about')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToSettingsView('about')
-            }}
-            className="w-full flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700 cursor-pointer touch-manipulation hover:bg-gray-700/50 transition-all"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-white">About SafeGuardian</span>
-            <span className="text-gray-400">›</span>
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Settings screen router
-  const renderSettingsScreen = () => {
-    switch (currentSettingsView) {
-      case 'parent_email':
-        return ParentEmailSetup()
-      case 'session_monitoring':
-        return SessionMonitoring()
-      case 'notifications':
-        return renderNotificationPreferences()
-      case 'monitoring':
-        return renderMonitoringSensitivity()
-      case 'dashboard':
-        return renderParentDashboardAccess()
-      case 'privacy':
-        return renderPrivacySettings()
-      case 'about':
-        return renderAboutSafeGuardian()
-      default:
-        return renderMainSettingsScreen()
-    }
-  }
-
-  // Protected screen
-  const renderProtectedScreen = () => {
-    return (
-      <div className="px-6">
-        <h2 className="text-lg font-semibold mb-4">Protection Status</h2>
-        <p className="text-sm text-gray-400 mb-6">
-          Your SafeGuardian protection is active and monitoring.
-        </p>
-        
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <div className="text-center mb-6">
-            <div className="text-4xl mb-3">🛡️</div>
-            <h2 className="text-xl font-bold mb-2">Active Protection</h2>
-            <p className="text-sm text-gray-400">
-              All systems operational
-            </p>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-              <span className="text-sm text-white">AI Monitoring</span>
-              <span className="text-xs text-green-400">Active</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-              <span className="text-sm text-white">Session Detection</span>
-              <span className="text-xs text-green-400">Enhanced</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-              <span className="text-sm text-white">Parent Alerts</span>
-              <span className={`text-xs ${isParentEmailSet ? 'text-green-400' : 'text-yellow-400'}`}>
-                {isParentEmailSet ? 'Enabled' : 'Setup Required'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-              <span className="text-sm text-white">Data Sync</span>
-              <span className="text-xs text-blue-400">Supabase</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Main content renderer
-  const renderContent = () => {
-    console.log('Rendering content for tab:', activeTab, 'Selected platform:', selectedPlatform, 'Settings view:', currentSettingsView)
-    
-    if (activeTab === 'home') {
-      return selectedPlatform ? renderPlatformAccess() : renderPlatformSelection();
-    } else if (activeTab === 'activity') {
-      return renderActivityScreen();
-    } else if (activeTab === 'protected') {
-      return renderProtectedScreen();
-    } else if (activeTab === 'settings') {
-      return renderSettingsScreen();
-    }
-    
-    return renderPlatformSelection();
-  }
-
+  // Main render
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
+    <div className="min-h-screen bg-gray-900 text-white pb-20">
       {/* Header */}
-      <div className="p-6 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center">
-              <span className="text-xl">🛡️</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">SafeGuardian</h1>
-              <p className="text-xs text-gray-400">Protected Access</p>
-            </div>
+      <div className="flex items-center justify-between p-6 border-b border-gray-700">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center">
+            <span className="text-xl">🛡️</span>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-gray-400">Status</div>
-            <div className="text-sm font-semibold text-green-400">Protected</div>
+          <div>
+            <h1 className="text-lg font-bold">SafeGuardian</h1>
+            <p className="text-xs text-gray-400">Protected Access</p>
           </div>
         </div>
-        
+        <div className="text-right">
+          <p className="text-xs text-gray-400">Status</p>
+          <p className="text-sm font-medium text-green-400">Protected</p>
+        </div>
+      </div>
+
+      {/* Monitoring Indicator */}
+      <div className="px-6 pt-4">
         <MonitoringIndicator />
       </div>
 
       {/* Main Content */}
-      {renderContent()}
-
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur border-t border-gray-700 p-4">
-        <div className="flex justify-around">
-          <button 
-            className="flex flex-col items-center gap-1 cursor-pointer touch-manipulation"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToTab('home')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToTab('home')
-            }}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-lg">🏠</span>
-            <span className={`text-xs ${activeTab === 'home' ? 'text-yellow-400' : 'text-gray-400'}`}>Home</span>
-          </button>
-          <button 
-            className="flex flex-col items-center gap-1 cursor-pointer touch-manipulation"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToTab('activity')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToTab('activity')
-            }}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-lg">📊</span>
-            <span className={`text-xs ${activeTab === 'activity' ? 'text-yellow-400' : 'text-gray-400'}`}>Activity</span>
-          </button>
-          <button 
-            className="flex flex-col items-center gap-1 cursor-pointer touch-manipulation"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToTab('protected')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToTab('protected')
-            }}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-lg">🛡️</span>
-            <span className={`text-xs ${activeTab === 'protected' ? 'text-yellow-400' : 'text-gray-400'}`}>Protected</span>
-          </button>
-          <button 
-            className="flex flex-col items-center gap-1 cursor-pointer touch-manipulation"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              navigateToTab('settings')
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              navigateToTab('settings')
-            }}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span className="text-lg">⚙️</span>
-            <span className={`text-xs ${activeTab === 'settings' ? 'text-yellow-400' : 'text-gray-400'}`}>Settings</span>
-          </button>
-        </div>
+      <div className="flex-1">
+        {activeTab === 'home' && <HomeScreen />}
+        {activeTab === 'activity' && <ActivityScreen />}
+        {activeTab === 'protected' && <ProtectedScreen />}
+        {activeTab === 'settings' && <SettingsScreen />}
       </div>
 
-      {/* Padding for bottom nav */}
-      <div className="h-20"></div>
+      {/* Navigation */}
+      <Navigation />
     </div>
   )
 }
